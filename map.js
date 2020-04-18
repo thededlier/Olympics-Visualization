@@ -49,14 +49,14 @@ Plotly.d3.csv('https://raw.githubusercontent.com/thededlier/Olympics-Visualizati
   // Get the group names:
   let years = Object.keys(lookup);
   let firstYear = lookup[years[0]];
-  let continents = Object.keys(firstYear);
+  let continents = Object.keys(COLORS);
 
   // Create the initial trace for each continent:
   var traces = [];
   for (i = 0; i < continents.length; i++) {
     let data = firstYear[continents[i]];
 
-    if (data.locations) {
+    if (data) {
       traces.push({
         type: 'scattergeo',
         name: continents[i],
@@ -66,6 +66,20 @@ Plotly.d3.csv('https://raw.githubusercontent.com/thededlier/Olympics-Visualizati
         text: data.text,
         marker: {
           size: data.marker.size,
+          sizemode: 'area',
+          color: COLORS[continents[i]]
+        }
+      });
+    } else {
+      traces.push({
+        type: 'scattergeo',
+        name: continents[i],
+        locationmode: 'ISO-3',
+        locations: [],
+        hoverinfo: 'text',
+        text: [],
+        marker: {
+          size: [],
           sizemode: 'area',
           color: COLORS[continents[i]]
         }
@@ -105,7 +119,7 @@ Plotly.d3.csv('https://raw.githubusercontent.com/thededlier/Olympics-Visualizati
   }
 
   var layout = {
-    title_text: "Olympic Medals over the Years<br>(Click legend to toggle traces)",
+    title: "Olympic Medals over the Years<br>(Click legend to toggle traces)",
     show_legend: true,
     height: 800,
 
@@ -138,6 +152,13 @@ Plotly.d3.csv('https://raw.githubusercontent.com/thededlier/Olympics-Visualizati
       }]
     }],
 
+    geo: {
+      showcountries: true,
+      landcolor: "#E5ECF6",
+      showlakes: true,
+      showland: true
+    },
+
     sliders: [{
       pad: {l: 130, t: 55},
       currentvalue: {
@@ -156,5 +177,11 @@ Plotly.d3.csv('https://raw.githubusercontent.com/thededlier/Olympics-Visualizati
     data: traces,
     layout: layout,
     frames: frames,
+  });
+
+  let mapPlot = document.getElementById('mapPlot');
+
+  mapPlot.on('plotly_click', function(data) {
+    debugger
   });
 });
