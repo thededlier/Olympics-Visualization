@@ -294,7 +294,7 @@ Plotly.d3.csv(MAP_URL, function (err, mapData) {
       let mapPlot = document.getElementById('mapPlot');
 
       mapPlot.on('plotly_click', function(data) {
-        let countryCode = data["points"][0]["data"]["locations"][0]
+        let countryCode = data["points"][0]["location"];
         showMedalChart(medalsDataset, countryCode);
         showGdpChart(mapData, gdpData, countryCode);
       });
