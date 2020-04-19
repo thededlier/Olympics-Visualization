@@ -3,13 +3,126 @@ let COLORS = {
   "Americas": "crimson",
   "Oceania": "lightseagreen",
   "Asia": "orange",
-  "Africa": "lightgrey"
+  "Africa": "lightgrey",
 }
 
-Plotly.d3.csv('https://raw.githubusercontent.com/thededlier/Olympics-Visualization/master/dataset/processed_map.csv?token=ADMXMDVZOSMGMWTQUSGRDS26UQ45E', function (err, data) {
-  // Create a lookup table to sort and regroup the columns of data,
-  // first by year, then by continent:
+let MAP_URL = "https://raw.githubusercontent.com/thededlier/Olympics-Visualization/master/dataset/processed_map.csv";
+let GDP_URL = "https://raw.githubusercontent.com/thededlier/Olympics-Visualization/master/dataset/gdp_csv.csv";
+let ATHLETE_URL = "https://raw.githubusercontent.com/thededlier/Olympics-Visualization/master/dataset/processed_athlete_data.csv";
 
+function showMedalChart(medalsData, country) {
+  let medalLookup = {};
+
+  function getMedalData(year) {
+    let byYear;
+    let trace;
+    if (!(byYear = medalLookup[year])) {
+      trace = medalLookup[year] = {};
+    }
+
+    trace = medalLookup[year] = {
+      values: [],
+      labels: ["Gold", "Silver", "Bronze", "None"],
+      marker: {
+        colors: ["#FFDF00", '#C0C0C0', "#A97142", '#808080'],
+      },
+      type: 'pie',
+      hoverinfo: 'name label percent',
+      domain: {
+        row: 0,
+        column: 0
+      },
+      name: year
+    };
+    return trace;
+  }
+
+  let initRow = 0;
+  let initCol = 0;
+  for (var i = 0; i < medalsData.length; i++) {
+    let datum = medalsData[i];
+    if (datum['country_iso'] == country) {
+      let trace = getMedalData(datum['Year']);
+      trace.values.push(datum['Gold count']);
+      trace.values.push(datum['Silver count']);
+      trace.values.push(datum['Bronze count']);
+      trace.values.push(datum['None count']);
+
+      if (initCol > 3) {
+        initCol = 0;
+        initRow += 1;
+      }
+
+      trace.domain.row = initRow;
+      trace.domain.column = initCol;
+      initCol +=1;
+    }
+  }
+
+  let years = Object.keys(medalLookup);
+  let pieChartData = [];
+
+  years.forEach((year) => {
+    pieChartData.push(medalLookup[year]);
+  });
+
+  let layout = {
+    title: 'Distribution of medals for ' + country,
+    height: 1400,
+    grid: {rows: initRow + 1, columns: 4}
+  }
+
+  Plotly.newPlot('pieChart', pieChartData, layout);
+}
+
+function showGdpChart(mapData, gdpData, country) {
+  let gdpTrace = {
+    x: [],
+    y: [],
+    name: "GDP",
+    type: "scatter"
+  }
+
+  let medalsTrace = {
+    x: [],
+    y: [],
+    name: "Medals",
+    type: "scatter",
+    yaxis: 'y2',
+  }
+
+  // Set medals trace
+  for (var i = 0; i < mapData.length; i++) {
+    let datum = mapData[i];
+    if (datum['country_iso'] == country) {
+        medalsTrace.x.push(datum['Year']);
+        medalsTrace.y.push(datum['Medal count']);
+    }
+  }
+
+  for (var i = 0; i < gdpData.length; i++) {
+    let datum = gdpData[i];
+    if (datum['Country Code'] == country) {
+        gdpTrace.x.push(datum['Year']);
+        gdpTrace.y.push(datum['Value']);
+    }
+  }
+
+  let layout = {
+    title: 'GDP vs Medals Won',
+    yaxis: {title: 'GDP ($)'},
+    yaxis2: {
+      title: 'Number of Medals',
+      overlaying: 'y',
+      side: 'right'
+    }
+};
+
+  Plotly.newPlot('gdpChart', [gdpTrace, medalsTrace], layout);
+}
+
+Plotly.d3.csv(MAP_URL, function (err, mapData) {
+  // Create a lookup table to sort and regroup the columns of data first by year, then by continent:
   let lookup = {};
 
   function getData(year, continent) {
@@ -18,8 +131,8 @@ Plotly.d3.csv('https://raw.githubusercontent.com/thededlier/Olympics-Visualizati
     if (!(byYear = lookup[year])) {;
       byYear = lookup[year] = {};
     }
-	 // If a container for this year + continent doesn't exist yet,
-	 // then create one:
+
+	 // If a container for this year + continent doesn't exist yet, then create one:
     if (!(trace = byYear[continent])) {
       trace = byYear[continent] = {
         type: 'scattergeo',
@@ -38,8 +151,8 @@ Plotly.d3.csv('https://raw.githubusercontent.com/thededlier/Olympics-Visualizati
   }
 
   // Go through each row, get the right trace, and append the data:
-  for (var i = 0; i < data.length; i++) {
-    let datum = data[i];
+  for (var i = 0; i < mapData.length; i++) {
+    let datum = mapData[i];
     let trace = getData(datum['Year'], datum.continent);
     trace.locations.push(datum['country_iso']);
     trace.text.push(datum['region'] + "-" + datum['Medal count'] + "medals");
@@ -87,10 +200,7 @@ Plotly.d3.csv('https://raw.githubusercontent.com/thededlier/Olympics-Visualizati
     }
   }
 
-  // Create a frame for each year. Frames are effectively just
-  // traces, except they don't need to contain the *full* trace
-  // definition (for example, appearance). The frames just need
-  // the parts the traces that change (here, the data).
+  // Create a frame for each year
   let frames = [];
   for (i = 0; i < years.length; i++) {
     frames.push({
@@ -119,7 +229,7 @@ Plotly.d3.csv('https://raw.githubusercontent.com/thededlier/Olympics-Visualizati
   }
 
   var layout = {
-    title: "Olympic Medals over the Years<br>(Click legend to toggle traces)",
+    title: "Olympic Medals over the Years<br>(Click country to see more)",
     show_legend: true,
     height: 800,
 
@@ -179,9 +289,15 @@ Plotly.d3.csv('https://raw.githubusercontent.com/thededlier/Olympics-Visualizati
     frames: frames,
   });
 
-  let mapPlot = document.getElementById('mapPlot');
+  Plotly.d3.csv(GDP_URL, function (err, gdpData) {
+    Plotly.d3.csv(ATHLETE_URL, function (err, medalsDataset) {
+      let mapPlot = document.getElementById('mapPlot');
 
-  mapPlot.on('plotly_click', function(data) {
-    debugger
+      mapPlot.on('plotly_click', function(data) {
+        let countryCode = data["points"][0]["data"]["locations"][0]
+        showMedalChart(medalsDataset, countryCode);
+        showGdpChart(mapData, gdpData, countryCode);
+      });
+    });
   });
 });
